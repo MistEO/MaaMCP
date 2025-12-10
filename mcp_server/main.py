@@ -1,8 +1,7 @@
 import atexit
-import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional
 
 import cv2
 from fastmcp import FastMCP
@@ -17,37 +16,11 @@ from maa.resource import Resource
 from maa.tasker import Tasker, TaskDetail
 from maa.pipeline import JRecognitionType, JOCR
 
-
-class ObjectRegistry:
-    def __init__(self):
-        self._objects: dict[str, Any] = {}
-
-    def register(self, object: Any) -> str:
-        id = str(uuid.uuid4())
-        self._objects[id] = object
-        return id
-
-    def register_by_name(self, name: str, object: Any) -> str:
-        self._objects[name] = object
-        return name
-
-    def unregister(self, id: str):
-        del self._objects[id]
-
-    def get(self, id: str) -> Any | None:
-        return self._objects.get(id)
-
-    def list(self) -> list[str]:
-        return list(self._objects.keys())
-
-    def clear(self):
-        self._objects.clear()
-
+from mcp_server.registry import ObjectRegistry
 
 object_registry = ObjectRegistry()
 # 记录当前会话保存的截图文件路径，用于退出时清理
 _saved_screenshots: list[Path] = []
-
 
 mcp = FastMCP(
     "MAA MCP",
@@ -328,7 +301,8 @@ def screencap(controller_id: str) -> Optional[str]:
         return None
     _saved_screenshots.append(filepath)
     return str(filepath.absolute())
-    
+
+
 @mcp.tool(
     name="click",
     description="""
@@ -376,12 +350,12 @@ def click(controller_id: str, x: int, y: int) -> bool:
 """,
 )
 def swipe(
-    controller_id: str,
-    start_x: int,
-    start_y: int,
-    end_x: int,
-    end_y: int,
-    duration: int,
+        controller_id: str,
+        start_x: int,
+        start_y: int,
+        end_x: int,
+        end_y: int,
+        duration: int,
 ) -> bool:
     controller = object_registry.get(controller_id)
     if not controller:
@@ -435,6 +409,7 @@ def click_key(controller_id: str, key: int) -> bool:
         return False
     return controller.post_click_key(key).wait().succeeded
 
+
 @mcp.tool(
     name="scroll",
     description="""
@@ -467,6 +442,3 @@ def cleanup_screenshots():
 
 
 atexit.register(cleanup_screenshots)
-
-if __name__ == "__main__":
-    mcp.run()
