@@ -336,12 +336,16 @@ def screencap(controller_id: str) -> Optional[str]:
 @mcp.tool(
     name="click",
     description="""
-    在设备屏幕上执行单点点击操作。
+    在设备屏幕上执行单点点击操作，支持长按。
 
     参数：
     - controller_id: 控制器 ID，由 connect_adb_device() 返回
     - x: 目标点的 X 坐标（像素，整数）
     - y: 目标点的 Y 坐标（像素，整数）
+    - button: 按键编号，默认为 0
+      - ADB 控制器：手指编号（0 为第一根手指）
+      - Win32 控制器：鼠标按键（0=左键, 1=右键, 2=中键）
+    - duration: 按下持续时间（毫秒），默认为 50；设置较大值可实现长按
 
     返回值：
     - 成功：返回 True
@@ -351,11 +355,58 @@ def screencap(controller_id: str) -> Optional[str]:
     坐标系统以屏幕左上角为原点 (0, 0)，X 轴向右，Y 轴向下。
 """,
 )
-def click(controller_id: str, x: int, y: int) -> bool:
+def click(controller_id: str, x: int, y: int, button: int = 0, duration: int = 50) -> bool:
     controller = object_registry.get(controller_id)
     if not controller:
         return False
-    return controller.post_click(x, y).wait().succeeded
+    if not controller.post_touch_down(x, y, contact=button).wait().succeeded:
+        return False
+    time.sleep(duration / 1000.0)
+    return controller.post_touch_up(contact=button).wait().succeeded
+
+
+@mcp.tool(
+    name="double_click",
+    description="""
+    在设备屏幕上执行双击操作。
+
+    参数：
+    - controller_id: 控制器 ID，由 connect_adb_device() 返回
+    - x: 目标点的 X 坐标（像素，整数）
+    - y: 目标点的 Y 坐标（像素，整数）
+    - button: 按键编号，默认为 0
+      - ADB 控制器：手指编号（0 为第一根手指）
+      - Win32 控制器：鼠标按键（0=左键, 1=右键, 2=中键）
+    - duration: 每次按下的持续时间（毫秒），默认为 50
+    - interval: 两次点击之间的间隔时间（毫秒），默认为 100
+
+    返回值：
+    - 成功：返回 True
+    - 失败：返回 False
+
+    说明：
+    坐标系统以屏幕左上角为原点 (0, 0)，X 轴向右，Y 轴向下。
+""",
+)
+def double_click(
+    controller_id: str, x: int, y: int, button: int = 0, duration: int = 50, interval: int = 100
+) -> bool:
+    controller = object_registry.get(controller_id)
+    if not controller:
+        return False
+    # 第一次点击
+    if not controller.post_touch_down(x, y, contact=button).wait().succeeded:
+        return False
+    time.sleep(duration / 1000.0)
+    if not controller.post_touch_up(contact=button).wait().succeeded:
+        return False
+    # 间隔等待
+    time.sleep(interval / 1000.0)
+    # 第二次点击
+    if not controller.post_touch_down(x, y, contact=button).wait().succeeded:
+        return False
+    time.sleep(duration / 1000.0)
+    return controller.post_touch_up(contact=button).wait().succeeded
 
 
 @mcp.tool(
