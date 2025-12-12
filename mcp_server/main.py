@@ -317,22 +317,23 @@ def load_resource(resource_path: str) -> Optional[str]:
     return object_registry.register(resource)
 
 
-def _get_or_create_tasker(resource_id: str) -> Optional[Tasker]:
+def _get_or_create_tasker(controller_id: str, resource_id: str) -> Optional[Tasker]:
     """
-    根据 resource_id 获取或创建 tasker 实例。
-    tasker 会被缓存，相同 resource_id 不会重复创建。
+    根据 controller_id 和 resource_id 获取或创建 tasker 实例。
+    tasker 会被缓存，相同组合不会重复创建。
     """
-    tasker_cache_key = f"_tasker_{resource_id}"
+    tasker_cache_key = f"_tasker_{controller_id}_{resource_id}"
     tasker: Tasker | None = object_registry.get(tasker_cache_key)
     if tasker:
         return tasker
 
+    controller: Controller | None = object_registry.get(controller_id)
     resource: Resource | None = object_registry.get(resource_id)
-    if not resource:
+    if not controller or not resource:
         return None
 
     tasker = Tasker()
-    tasker.bind(resource, Controller(None))
+    tasker.bind(resource, controller)
     if not tasker.inited:
         return None
 
@@ -358,8 +359,8 @@ def _get_or_create_tasker(resource_id: str) -> Optional[Tasker]:
 """,
 )
 def ocr(controller_id: str, resource_id: str) -> Optional[list]:
-    controller = object_registry.get(controller_id)
-    tasker = _get_or_create_tasker(resource_id)
+    controller: Controller | None = object_registry.get(controller_id)
+    tasker = _get_or_create_tasker(controller_id, resource_id)
     if not controller or not tasker:
         return None
 
