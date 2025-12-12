@@ -34,7 +34,6 @@ mcp = FastMCP(
     ⭐ 多设备/多窗口协同支持：
     - 可同时连接多个 ADB 设备和/或多个 Windows 窗口
     - 每个设备/窗口拥有独立的控制器 ID（controller_id）
-    - 任务管理器（tasker）与控制器解耦，一个 tasker 可服务于多个控制器
     - 通过在操作时指定不同的 controller_id 实现多设备协同自动化
 
     标准工作流程：
@@ -50,13 +49,8 @@ mcp = FastMCP(
        - 资源路径应指向包含 resource/model/*.onnx 的目录（通常为项目 assets/resource 目录）
        - 资源只需加载一次，可供多个设备共享使用
 
-    3. 任务管理器创建
-       - 调用 create_tasker(resource_id) 创建任务管理器实例
-       - 任务管理器与资源绑定，不与特定控制器绑定
-       - 一个 tasker 可对多个 controller 执行 OCR 识别
-
-    4. 自动化执行循环
-       - 调用 ocr(controller_id, tasker_id) 对指定设备进行屏幕截图和 OCR 识别
+    3. 自动化执行循环
+       - 调用 ocr(controller_id, resource_id) 对指定设备进行屏幕截图和 OCR 识别
        - 根据识别结果调用 click()、double_click()、swipe() 等执行相应操作
        - 所有操作通过 controller_id 指定目标设备/窗口
        - 可在多个设备间切换操作，实现协同自动化
@@ -72,7 +66,7 @@ mcp = FastMCP(
     - 所有 ID 均为字符串类型，由系统自动生成并管理
     - 操作失败时函数返回 None 或 False，需进行错误处理
     - 多设备场景下必须等待用户明确选择，不得自动决策
-    - 请妥善保存所有 controller_id，以便在多设备间切换操作
+    - 请妥善保存 controller_id 和 resource_id，以便在多设备间切换操作
 
     安全约束（重要）：
     - 所有 ADB、窗口句柄 相关操作必须且仅能通过本 MCP 提供的工具函数执行
@@ -233,7 +227,7 @@ def connect_window(window_name: str) -> Optional[str]:
       - 传入路径为 resource 这一级目录，而非其子目录
 
     返回值：
-    - 成功：返回资源 ID（字符串），用于创建任务管理器
+    - 成功：返回资源 ID（字符串），用于后续 OCR 等操作
     - 失败：返回 None（路径不存在或资源加载失败）
 
     前置检查：
@@ -249,32 +243,27 @@ def load_resource(resource_path: str) -> Optional[str]:
     return object_registry.register(resource)
 
 
-@mcp.tool(
-    name="create_tasker",
-    description="""
-    创建任务管理器实例，用于执行 OCR 识别等自动化任务。
+def _get_or_create_tasker(resource_id: str) -> Optional[Tasker]:
+    """
+    根据 resource_id 获取或创建 tasker 实例。
+    tasker 会被缓存，相同 resource_id 不会重复创建。
+    """
+    tasker_cache_key = f"_tasker_{resource_id}"
+    tasker: Tasker | None = object_registry.get(tasker_cache_key)
+    if tasker:
+        return tasker
 
-    参数：
-    - resource_id: 资源 ID，由 load_resource() 返回
-
-    返回值：
-    - 成功：返回任务管理器 ID（字符串），用于后续 OCR 识别等操作
-    - 失败：返回 None（资源无效或初始化失败）
-
-    说明：
-    任务管理器是执行 OCR 识别等自动化操作的核心组件，需确保资源已成功初始化。
-""",
-)
-def create_tasker(resource_id: str) -> Optional[str]:
-    resource = object_registry.get(resource_id)
+    resource: Resource | None = object_registry.get(resource_id)
     if not resource:
         return None
+
     tasker = Tasker()
     tasker.bind(resource, Controller())
     if not tasker.inited:
         return None
 
-    return object_registry.register(tasker)
+    object_registry.register_by_name(tasker_cache_key, tasker)
+    return tasker
 
 
 @mcp.tool(
@@ -284,7 +273,7 @@ def create_tasker(resource_id: str) -> Optional[str]:
 
     参数：
     - controller_id: 控制器 ID，由 connect_adb_device() 或 connect_window() 返回
-    - tasker_id: 任务管理器 ID，由 create_tasker() 返回
+    - resource_id: 资源 ID，由 load_resource() 返回
 
     返回值：
     - 成功：返回识别结果字符串，包含识别到的文字、坐标信息、置信度等结构化数据
@@ -294,9 +283,9 @@ def create_tasker(resource_id: str) -> Optional[str]:
     识别结果可用于后续的坐标定位和自动化决策，通常包含文本内容、边界框坐标、置信度评分等信息。
 """,
 )
-def ocr(controller_id: str, tasker_id: str) -> Optional[list]:
+def ocr(controller_id: str, resource_id: str) -> Optional[list]:
     controller = object_registry.get(controller_id)
-    tasker: Tasker | None = object_registry.get(tasker_id)
+    tasker = _get_or_create_tasker(resource_id)
     if not controller or not tasker:
         return None
 

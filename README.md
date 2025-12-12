@@ -47,7 +47,6 @@ Talk is cheap, 请看: **[🎞️ Bilibili 视频演示](https://www.bilibili.co
 #### 📦 资源管理
 
 - `load_resource` - 加载 OCR 模型和图像资源
-- `create_tasker` - 创建自动化任务管理器
 
 #### 👀 屏幕识别
 
@@ -138,21 +137,19 @@ MaaMCP 会自动：
 
 ### 工作流程
 
-MaaMCP 遵循严格的操作流程，支持多设备/多窗口协同工作：
+MaaMCP 遵循简洁的操作流程，支持多设备/多窗口协同工作：
 
 ```mermaid
 graph LR
     A[扫描设备] --> B[建立连接]
     B --> C[加载资源]
-    C --> D[创建任务管理器]
-    D --> E[执行自动化操作]
+    C --> D[执行自动化操作]
 ```
 
 1. **扫描** - 使用 `find_adb_device_list` 或 `find_window_list`
 2. **连接** - 使用 `connect_adb_device` 或 `connect_window`（可连接多个设备/窗口，获得多个控制器 ID）
 3. **加载** - 使用 `load_resource` 加载 OCR 模型（只需加载一次）
-4. **创建** - 使用 `create_tasker` 创建任务管理器（只需创建一次，可服务多个控制器）
-5. **操作** - 通过指定不同的控制器 ID，对多个设备/窗口执行 OCR、点击、滑动等自动化操作
+4. **操作** - 通过指定不同的控制器 ID，对多个设备/窗口执行 OCR、点击、滑动等自动化操作
 
 ### 安全说明
 
@@ -209,7 +206,6 @@ MaaMCP is a Model Context Protocol server that exposes MaaFramework's powerful a
 #### 📦 Resource Management
 
 - `load_resource` - Load OCR models and image resources
-- `create_tasker` - Create automation task manager
 
 #### 👀 Screen Recognition
 
@@ -298,21 +294,19 @@ MaaMCP will automatically:
 
 ### Workflow
 
-MaaMCP follows a strict operational workflow with multi-device/window coordination support:
+MaaMCP follows a streamlined operational workflow with multi-device/window coordination support:
 
 ```mermaid
 graph LR
     A[Scan Devices] --> B[Establish Connection]
     B --> C[Load Resources]
-    C --> D[Create Task Manager]
-    D --> E[Execute Automation]
+    C --> D[Execute Automation]
 ```
 
 1. **Scan** - Use `find_adb_device_list` or `find_window_list`
 2. **Connect** - Use `connect_adb_device` or `connect_window` (can connect multiple devices/windows, each gets a unique controller ID)
 3. **Load** - Use `load_resource` to load OCR models (only needs to be loaded once)
-4. **Create** - Use `create_tasker` to create task manager (only needs to be created once, can serve multiple controllers)
-5. **Operate** - Execute OCR, click, swipe, etc. on multiple devices/windows by specifying different controller IDs
+4. **Operate** - Execute OCR, click, swipe, etc. on multiple devices/windows by specifying different controller IDs
 
 ### Security Notes
 
