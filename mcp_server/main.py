@@ -473,22 +473,48 @@ def input_text(controller_id: str, text: str) -> bool:
 @mcp.tool(
     name="click_key",
     description="""
-    在设备屏幕上执行按键点击操作。
+    在设备屏幕上执行按键点击操作，支持长按。
 
     参数：
     - controller_id: 控制器 ID，由 connect_adb_device() 返回
     - key: 要点击的按键（虚拟按键码）
+    - duration: 按键持续时间（毫秒），默认为 50；设置较大值可实现长按
 
     返回值：
     - 成功：返回 True
     - 失败：返回 False
+
+    常用按键值：
+    ADB 控制器（Android KeyEvent）：
+      - 返回键: 4
+      - Home键: 3
+      - 菜单键: 82
+      - 回车/确认: 66
+      - 删除/退格: 67
+      - 音量+: 24
+      - 音量-: 25
+      - 电源键: 26
+
+    Win32 控制器（Windows Virtual-Key Codes）：
+      - 回车: 13 (0x0D)
+      - ESC: 27 (0x1B)
+      - 退格: 8 (0x08)
+      - Tab: 9 (0x09)
+      - 空格: 32 (0x20)
+      - 左箭头: 37 (0x25)
+      - 上箭头: 38 (0x26)
+      - 右箭头: 39 (0x27)
+      - 下箭头: 40 (0x28)
     """,
 )
-def click_key(controller_id: str, key: int) -> bool:
+def click_key(controller_id: str, key: int, duration: int = 50) -> bool:
     controller = object_registry.get(controller_id)
     if not controller:
         return False
-    return controller.post_click_key(key).wait().succeeded
+    if not controller.post_key_down(key).wait().succeeded:
+        return False
+    time.sleep(duration / 1000.0)
+    return controller.post_key_up(key).wait().succeeded
 
 
 @mcp.tool(
