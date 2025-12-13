@@ -161,6 +161,14 @@ On first use, OCR model files will be automatically downloaded. However, downloa
 2. Check for resource download errors in `model/download.log`
 3. Manually run `python -c "from maa_mcp.download import download_and_extract_ocr; download_and_extract_ocr()"` to retry downloading
 
+### About Issues
+
+When filing an issue, please provide log files. The log file path is as follows:
+
+- Windows: `C:\Users\<username>\AppData\Local\MaaMCP\debug\maa.log`
+- macOS: `~/Library/Application Support/MaaMCP/debug/maa.log`
+- Linux: `~/.local/share/MaaMCP/debug/maa.log`
+
 ## License
 
 This project is licensed under [GNU AGPL v3](LICENSE).

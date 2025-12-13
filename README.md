@@ -161,6 +161,14 @@ graph LR
 2. 检查 `model/download.log` 中是否出现资源下载异常
 3. 手动执行 `python -c "from maa_mcp.download import download_and_extract_ocr; download_and_extract_ocr()"` 再次尝试下载
 
+### 关于 ISSUE
+
+提交问题时，请提供日志文件，日志文件路径如下：
+
+- Windows: `C:\Users\<用户名>\AppData\Local\MaaMCP\debug\maa.log`
+- macOS: `~/Library/Application Support/MaaMCP/debug/maa.log`
+- Linux: `~/.local/share/MaaMCP/debug/maa.log`
+
 ## 许可证
 
 本项目采用 [GNU AGPL v3](LICENSE) 许可证。
