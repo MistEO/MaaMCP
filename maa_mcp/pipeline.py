@@ -12,8 +12,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from maa.tasker import TaskDetail
+
 from maa_mcp.core import mcp
 from maa_mcp.paths import get_data_dir
+from maa_mcp.resource import get_or_create_resource, get_or_create_tasker
 
 
 # Pipeline 协议文档（精简版，包含 AI 生成 Pipeline 所需的关键信息）
@@ -260,9 +263,44 @@ def get_pipeline_protocol() -> str:
 
 
 @mcp.tool(
+    name="load_pipeline",
+    description="""
+    读取已有的 Pipeline JSON 文件内容。
+
+    参数：
+    - pipeline_path: Pipeline JSON 文件路径
+
+    返回值：
+    - 成功：返回 Pipeline JSON 内容（dict 格式）
+    - 失败：返回错误信息字符串
+
+    说明：
+    用于读取已保存的 Pipeline 进行查看或修改，修改后可调用 save_pipeline() 保存。
+""",
+)
+def load_pipeline(pipeline_path: str) -> dict | str:
+    path = Path(pipeline_path)
+    if not path.exists():
+        return f"Pipeline 文件不存在: {pipeline_path}"
+    if not path.is_file():
+        return f"Pipeline 路径不是文件: {pipeline_path}"
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            pipeline = json.load(f)
+        if not isinstance(pipeline, dict):
+            return "Pipeline 文件格式错误: 顶层必须是对象"
+        return pipeline
+    except json.JSONDecodeError as e:
+        return f"Pipeline JSON 解析失败: {e}"
+    except OSError as e:
+        return f"读取文件失败: {e}"
+
+
+@mcp.tool(
     name="save_pipeline",
     description="""
-    保存生成的 Pipeline JSON 到文件。
+    保存 Pipeline JSON 到文件。
 
     参数：
     - pipeline_json: Pipeline JSON 字符串，需符合 MaaFramework Pipeline 协议
@@ -272,13 +310,12 @@ def get_pipeline_protocol() -> str:
     - name: Pipeline 名称（可选），用于生成默认文件名
     - overwrite: 是否覆盖已存在的文件，默认 True
 
-    返回值（结构化 JSON）：
-    - 成功：{"ok": true, "path": "文件路径"}
-    - 失败：{"ok": false, "error": "错误信息"}
+    返回值：
+    - 成功：返回保存的文件路径
+    - 失败：返回错误信息
 
-    注意事项：
-    - pipeline_json 必须是有效的 JSON 格式，顶层必须是对象（以节点名为键）
-    - 生成 Pipeline 时应只保留成功的操作路径，去掉失败的尝试
+    说明：
+    可用于新建 Pipeline 或更新已有 Pipeline（指定 output_path 为已有文件路径即可覆盖更新）。
 """,
 )
 def save_pipeline(
@@ -287,24 +324,18 @@ def save_pipeline(
     name: Optional[str] = None,
     overwrite: bool = True,
 ) -> str:
-    def success(path: str) -> str:
-        return json.dumps({"ok": True, "path": path}, ensure_ascii=False)
-
-    def error(message: str) -> str:
-        return json.dumps({"ok": False, "error": message}, ensure_ascii=False)
-
     # 验证 JSON 格式
     try:
         pipeline = json.loads(pipeline_json)
     except json.JSONDecodeError as e:
-        return error(f"Pipeline JSON 格式错误: {e}")
+        return f"Pipeline JSON 格式错误: {e}"
 
     # 验证 Pipeline 结构：必须是以节点名为键的非空对象
     if not isinstance(pipeline, dict):
-        return error("Pipeline JSON 结构错误: 顶层必须是对象（以节点名为键），而不是数组或原始值")
+        return "Pipeline JSON 结构错误: 顶层必须是对象（以节点名为键），而不是数组或原始值"
 
     if not pipeline:
-        return error("Pipeline JSON 结构错误: 对象不能为空，至少需要包含一个节点配置")
+        return "Pipeline JSON 结构错误: 对象不能为空，至少需要包含一个节点配置"
 
     # 确定输出路径
     if output_path:
@@ -332,7 +363,7 @@ def save_pipeline(
 
     # 检查文件是否已存在
     if filepath.exists() and not overwrite:
-        return error(f"文件已存在且 overwrite=False: {filepath.absolute()}")
+        return f"文件已存在且 overwrite=False: {filepath.absolute()}"
 
     try:
         # 确保父目录存在
@@ -342,6 +373,75 @@ def save_pipeline(
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(pipeline, f, ensure_ascii=False, indent=2)
     except OSError as e:
-        return error(f"写入文件失败: {e}")
+        return f"写入文件失败: {e}"
 
-    return success(str(filepath.absolute()))
+    return str(filepath.absolute())
+
+
+@mcp.tool(
+    name="run_pipeline",
+    description="""
+    加载并运行 Pipeline JSON 文件。
+
+    参数：
+    - controller_id: 控制器 ID，由 connect_adb_device() 或 connect_window() 返回
+    - pipeline_path: Pipeline JSON 文件路径
+    - entry: 入口节点名称（可选），不指定则使用 Pipeline 中的第一个节点
+
+    返回值：
+    - 成功：返回 TaskDetail 对象，包含 task_id、entry、status、nodes 等执行信息
+    - 失败：返回错误信息字符串
+
+    说明：
+    此函数会先加载 Pipeline 文件到 Resource，然后通过 Tasker 执行任务。
+""",
+)
+def run_pipeline(
+    controller_id: str,
+    pipeline_path: str,
+    entry: Optional[str] = None,
+) -> TaskDetail | str:
+    # 检查文件是否存在
+    path = Path(pipeline_path)
+    if not path.exists():
+        return f"Pipeline 文件不存在: {pipeline_path}"
+    if not path.is_file():
+        return f"Pipeline 路径不是文件: {pipeline_path}"
+
+    # 获取或创建 Resource 和 Tasker
+    resource = get_or_create_resource()
+    if not resource:
+        return "获取 Resource 失败"
+
+    tasker = get_or_create_tasker(controller_id)
+    if not tasker:
+        return "获取 Tasker 失败，请确保 controller_id 有效"
+
+    # 加载 Pipeline
+    load_job = resource.post_pipeline(str(path.absolute()))
+    if not load_job.wait().succeeded:
+        return f"加载 Pipeline 失败: {pipeline_path}"
+
+    # 如果没有指定入口节点，尝试从 Pipeline 文件中读取第一个节点
+    entry_node: str
+    if entry:
+        entry_node = entry
+    else:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                pipeline_data = json.load(f)
+            if isinstance(pipeline_data, dict) and pipeline_data:
+                entry_node = next(iter(pipeline_data.keys()))
+            else:
+                return "Pipeline 文件为空或格式不正确"
+        except json.JSONDecodeError as e:
+            return f"读取 Pipeline 文件失败: {e}"
+
+    # 执行任务
+    task_job = tasker.post_task(entry_node)
+    task_detail = task_job.wait().get()
+
+    if not task_detail:
+        return "任务执行失败，无法获取执行详情"
+
+    return task_detail

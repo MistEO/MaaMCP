@@ -64,10 +64,12 @@ Talk is cheap, 请看: **[🎞️ Bilibili 视频演示](https://www.bilibili.co
   - 支持组合键：Ctrl+C、Ctrl+V、Alt+Tab 等
 - `scroll` - 鼠标滚轮（仅 Windows）
 
-### 📝 Pipeline 生成
+### 📝 Pipeline 生成与运行
 
 - `get_pipeline_protocol` - 获取 Pipeline 协议文档
-- `save_pipeline` - 保存生成的 Pipeline JSON 到文件
+- `save_pipeline` - 保存 Pipeline JSON 到文件（支持新建和更新）
+- `load_pipeline` - 读取已有的 Pipeline 文件
+- `run_pipeline` - 运行 Pipeline 并返回执行结果
 
 ## 快速开始
 
@@ -172,13 +174,20 @@ graph LR
     B --> C[AI 阅读 Pipeline 文档]
     C --> D[AI 智能生成 Pipeline]
     D --> E[保存 JSON 文件]
-    E --> F[后续直接运行]
+    E --> F[运行验证]
+    F --> G{是否成功?}
+    G -->|是| H[完成]
+    G -->|否| I[分析失败原因]
+    I --> J[修改 Pipeline]
+    J --> F
 ```
 
 1. **执行操作** - AI 正常执行 OCR、点击、滑动等自动化操作
 2. **获取文档** - 调用 `get_pipeline_protocol` 获取 Pipeline 协议规范
 3. **智能生成** - AI 根据文档规范，将**有效操作**转换为 Pipeline JSON
 4. **保存文件** - 调用 `save_pipeline` 保存生成的 Pipeline
+5. **运行验证** - 调用 `run_pipeline` 验证 Pipeline 是否正常运行
+6. **迭代优化** - 根据运行结果分析失败原因，修改 Pipeline 直到成功
 
 ### 智能生成的优势
 
@@ -187,6 +196,23 @@ graph LR
 - **只保留成功路径**：如果操作过程中尝试了多条路径（如先进入 A 菜单没找到，返回后又进入 B 菜单才找到），AI 会只保留最终成功的路径，去掉失败的尝试
 - **理解操作意图**：AI 能够理解每个操作的目的，生成语义清晰的节点名称
 - **优化识别条件**：根据 OCR 结果智能设置识别区域和匹配条件
+- **验证与迭代**：通过运行验证发现问题，自动修复并增强鲁棒性
+
+### 验证与迭代优化
+
+Pipeline 生成后，AI 会自动进行验证和优化：
+
+1. **运行验证** - 执行 Pipeline 检查是否成功
+2. **失败分析** - 如果失败，分析具体哪个节点出错及原因
+3. **智能修复** - 常见优化手段：
+   - 增加备选识别节点（在 next 列表中添加多个候选）
+   - 放宽 OCR 匹配条件（使用正则表达式或部分匹配）
+   - 调整 roi 识别区域
+   - 增加等待时间（post_delay）
+   - 添加中间状态检测节点
+4. **重新验证** - 修改后再次运行，直到稳定成功
+
+如果发现 Pipeline 逻辑本身有问题，AI 还可以重新执行自动化操作，结合新旧经验生成更完善的 Pipeline。
 
 ### 示例输出
 

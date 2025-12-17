@@ -64,10 +64,12 @@ Talk is cheap, see: **[🎞️ Bilibili Video Demo](https://www.bilibili.com/vid
   - Supports key combinations: Ctrl+C, Ctrl+V, Alt+Tab, etc.
 - `scroll` - Mouse wheel (Windows only)
 
-### 📝 Pipeline Generation
+### 📝 Pipeline Generation & Execution
 
 - `get_pipeline_protocol` - Get Pipeline protocol documentation
-- `save_pipeline` - Save generated Pipeline JSON to file
+- `save_pipeline` - Save Pipeline JSON to file (supports create and update)
+- `load_pipeline` - Load existing Pipeline file
+- `run_pipeline` - Run Pipeline and return execution results
 
 ## Quick Start
 
@@ -172,13 +174,20 @@ graph LR
     B --> C[AI Reads Pipeline Docs]
     C --> D[AI Intelligently Generates Pipeline]
     D --> E[Save JSON File]
-    E --> F[Run Directly Later]
+    E --> F[Run Validation]
+    F --> G{Success?}
+    G -->|Yes| H[Done]
+    G -->|No| I[Analyze Failure]
+    I --> J[Modify Pipeline]
+    J --> F
 ```
 
 1. **Execute Operations** - AI performs OCR, click, swipe, and other automation operations normally
 2. **Get Documentation** - Call `get_pipeline_protocol` to get Pipeline protocol specification
 3. **Intelligent Generation** - AI converts **valid operations** into Pipeline JSON based on the documentation
 4. **Save File** - Call `save_pipeline` to save the generated Pipeline
+5. **Run Validation** - Call `run_pipeline` to verify the Pipeline works correctly
+6. **Iterative Optimization** - Analyze failures and modify Pipeline until successful
 
 ### Advantages of Intelligent Generation
 
@@ -187,6 +196,23 @@ Unlike mechanical recording, AI intelligent generation offers these advantages:
 - **Only Keeps Successful Paths**: If multiple paths were tried during operation (e.g., first entering Menu A without finding the target, then returning and entering Menu B to find it), AI will only keep the final successful path, removing failed attempts
 - **Understands Operation Intent**: AI can understand the purpose of each operation and generate semantically clear node names
 - **Optimizes Recognition Conditions**: Intelligently sets recognition regions and matching conditions based on OCR results
+- **Validation & Iteration**: Discovers issues through run validation, automatically fixes and enhances robustness
+
+### Validation & Iterative Optimization
+
+After Pipeline generation, AI automatically validates and optimizes:
+
+1. **Run Validation** - Execute Pipeline to check if it succeeds
+2. **Failure Analysis** - If failed, analyze which node failed and why
+3. **Intelligent Fixes** - Common optimization techniques:
+   - Add alternative recognition nodes (add multiple candidates in next list)
+   - Relax OCR matching conditions (use regex or partial matching)
+   - Adjust roi recognition regions
+   - Add wait time (post_delay)
+   - Add intermediate state detection nodes
+4. **Re-validate** - Run again after modifications until stable success
+
+If the Pipeline logic itself needs adjustment, AI can re-execute automation operations and combine old and new experiences to generate a more robust Pipeline.
 
 ### Example Output
 
