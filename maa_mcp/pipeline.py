@@ -271,16 +271,17 @@ def get_pipeline_protocol() -> str:
     参数：
     - pipeline_json: Pipeline JSON 字符串，需符合 MaaFramework Pipeline 协议
     - output_path: 输出文件路径（可选）
-      - 如果提供：保存到指定路径
+      - 如果提供：保存到指定路径（若文件已存在会被覆盖）
       - 如果不提供：保存到默认位置（用户数据目录/pipelines/）
     - name: Pipeline 名称（可选），用于生成默认文件名
+    - overwrite: 是否覆盖已存在的文件，默认 True
 
-    返回值：
-    - 成功：返回保存的文件路径
-    - 失败：返回错误信息
+    返回值（结构化 JSON）：
+    - 成功：{"ok": true, "path": "文件路径"}
+    - 失败：{"ok": false, "error": "错误信息"}
 
     注意事项：
-    - pipeline_json 必须是有效的 JSON 格式
+    - pipeline_json 必须是有效的 JSON 格式，顶层必须是对象（以节点名为键）
     - 生成 Pipeline 时应只保留成功的操作路径，去掉失败的尝试
 """,
 )
@@ -288,16 +289,39 @@ def save_pipeline(
     pipeline_json: str,
     output_path: Optional[str] = None,
     name: Optional[str] = None,
+    overwrite: bool = True,
 ) -> str:
+    def success(path: str) -> str:
+        return json.dumps({"ok": True, "path": path}, ensure_ascii=False)
+
+    def error(message: str) -> str:
+        return json.dumps({"ok": False, "error": message}, ensure_ascii=False)
+
     # 验证 JSON 格式
     try:
         pipeline = json.loads(pipeline_json)
     except json.JSONDecodeError as e:
-        return f"Pipeline JSON 格式错误: {e}"
+        return error(f"Pipeline JSON 格式错误: {e}")
+
+    # 验证 Pipeline 结构：必须是以节点名为键的非空对象
+    if not isinstance(pipeline, dict):
+        return error("Pipeline JSON 结构错误: 顶层必须是对象（以节点名为键），而不是数组或原始值")
+
+    if not pipeline:
+        return error("Pipeline JSON 结构错误: 对象不能为空，至少需要包含一个节点配置")
 
     # 确定输出路径
     if output_path:
         filepath = Path(output_path)
+        # 如果指定的路径是目录，则在该目录下生成文件名
+        if filepath.is_dir():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            if name:
+                safe_name = "".join(c for c in name if c.isalnum() or c in "._- ")
+                safe_name = safe_name.strip()[:50] or "pipeline"
+                filepath = filepath / f"{safe_name}_{timestamp}.json"
+            else:
+                filepath = filepath / f"pipeline_{timestamp}.json"
     else:
         pipelines_dir = get_data_dir() / "pipelines"
         pipelines_dir.mkdir(parents=True, exist_ok=True)
@@ -310,11 +334,18 @@ def save_pipeline(
         else:
             filepath = pipelines_dir / f"pipeline_{timestamp}.json"
 
-    # 确保父目录存在
-    filepath.parent.mkdir(parents=True, exist_ok=True)
+    # 检查文件是否已存在
+    if filepath.exists() and not overwrite:
+        return error(f"文件已存在且 overwrite=False: {filepath.absolute()}")
 
-    # 写入文件（格式化输出）
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(pipeline, f, ensure_ascii=False, indent=2)
+    try:
+        # 确保父目录存在
+        filepath.parent.mkdir(parents=True, exist_ok=True)
 
-    return f"Pipeline 已保存到: {filepath.absolute()}"
+        # 写入文件（格式化输出）
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(pipeline, f, ensure_ascii=False, indent=2)
+    except OSError as e:
+        return error(f"写入文件失败: {e}")
+
+    return success(str(filepath.absolute()))

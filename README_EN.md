@@ -168,7 +168,7 @@ MaaMCP supports AI converting executed operations into [MaaFramework Pipeline](h
 
 ```mermaid
 graph LR
-    A[AI Executes Operations] --> B[Operations Complete]
+    A[AI Executes Operations] --> B[Operations Completed]
     B --> C[AI Reads Pipeline Docs]
     C --> D[AI Intelligently Generates Pipeline]
     D --> E[Save JSON File]
