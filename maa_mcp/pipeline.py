@@ -12,6 +12,7 @@ import webbrowser
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlencode
 from lzstring import LZString
 
 from maa.tasker import TaskDetail
@@ -354,16 +355,17 @@ def save_pipeline(
             else:
                 filepath = filepath / f"pipeline_{timestamp}.json"
     else:
-        pipelines_dir = get_data_dir() / "pipelines"
-        pipelines_dir.mkdir(parents=True, exist_ok=True)
+        # 默认保存到用户的 Downloads 目录
+        downloads_dir = Path.home() / "Downloads"
+        downloads_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         if name:
             # 清理名称中的非法字符
             safe_name = "".join(c for c in name if c.isalnum() or c in "._- ")
             safe_name = safe_name.strip()[:50] or "pipeline"
-            filepath = pipelines_dir / f"{safe_name}_{timestamp}.json"
+            filepath = downloads_dir / f"{safe_name}_{timestamp}.json"
         else:
-            filepath = pipelines_dir / f"pipeline_{timestamp}.json"
+            filepath = downloads_dir / f"pipeline_{timestamp}.json"
 
     # 检查文件是否已存在
     if filepath.exists() and not overwrite:
@@ -457,27 +459,11 @@ def run_pipeline(
 MPE 相关配置
 """
 
-# MPE 分享协议版本
-MPE_SHARE_VERSION = 1
-# URL 参数名
-MPE_SHARE_PARAM = "shared"
 # 默认 MPE 基准地址
 MPE_BASE_URL = "https://mpe.codax.site/stable"
-# URL 最大大小限制
-MPE_MAX_URL_SIZE = 60 * 1024  # 60KB
-
-
-def generate_share_link(pipeline_obj: dict) -> str:
-    # 生成分享链接
-    payload = {
-        "v": MPE_SHARE_VERSION,
-        "d": pipeline_obj,
-    }
-    json_string = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-    lz = LZString()
-    compressed = lz.compressToEncodedURIComponent(json_string)
-    share_url = f"{MPE_BASE_URL}?{MPE_SHARE_PARAM}={compressed}"
-    return share_url
+# 参数配置
+MPE_IMPORT_PARAM = "import"  # 起始目录
+MPE_IMPORT_FILE_PARAM = "file"  # 建议文件名
 
 
 @mcp.tool(
@@ -489,18 +475,18 @@ def generate_share_link(pipeline_obj: dict) -> str:
     - pipeline_file_path: Pipeline JSON 文件的本地路径（字符串）
 
     功能说明：
-    该工具会读取指定路径的 Pipeline JSON 文件，将数据压缩编码后生成一个分享链接，
-    并自动在系统默认浏览器中打开，方便用户可视化查看工作流结构。
+    该工具会根据 Pipeline 文件路径推断起始目录和文件名，生成导入参数 URL，
+    并自动在系统默认浏览器中打开。前端会提示用户从指定目录选择文件进行导入。
 
     注意：
     - 此工具无返回值，仅执行打开浏览器的操作
     - 仅在用户要求查看 Pipeline 可视化流程图时使用
     - 传入的文件路径必须指向一个有效的本地 JSON 文件
-    - 如果生成的 URL 超过 60KB，将返回错误提示而不打开浏览器
+    - 前端会根据 URL 参数提示用户从本地选择文件导入
     """,
 )
 def open_pipeline_in_browser(pipeline_file_path: str) -> None:
-    # 读取文件内容
+    # 获取文件路径
     file_path = Path(pipeline_file_path)
 
     if not file_path.exists():
@@ -508,18 +494,36 @@ def open_pipeline_in_browser(pipeline_file_path: str) -> None:
     if not file_path.is_file():
         raise ValueError(f"路径不是文件: {pipeline_file_path}")
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        pipeline_obj = json.load(f)
+    # 提取文件名
+    file_name = file_path.name
 
-    # 生成分享链接
-    share_url = generate_share_link(pipeline_obj)
-
-    # 检查 URL 大小
-    url_size = len(share_url.encode("utf-8"))
-    if url_size > MPE_MAX_URL_SIZE:
-        size_kb = url_size / 1024
+    # 推断起始目录
+    lower_path = str(file_path).lower()
+    if "downloads" in lower_path or "download" in lower_path or "下载" in lower_path:
+        start_dir = "downloads"
+    elif "documents" in lower_path or "docs" in lower_path or "文档" in lower_path:
+        start_dir = "documents"
+    elif "desktop" in lower_path or "桌面" in lower_path:
+        start_dir = "desktop"
+    elif "music" in lower_path or "音乐" in lower_path:
+        start_dir = "music"
+    elif "pictures" in lower_path or "图片" in lower_path:
+        start_dir = "pictures"
+    elif "videos" in lower_path or "视频" in lower_path:
+        start_dir = "videos"
+    else:
+        # 无法推断起始目录
         raise ValueError(
-            f"生成的分享链接过大（{size_kb:.2f} KB），请自行通过复制或文件的方式导入 Pipeline 至 MPE。"
+            f"无法从路径推断起始目录: {pipeline_file_path}\n"
+            f"请将文件放置在以下目录之一: Downloads、Documents、Desktop、Music、Pictures、Videos"
         )
 
-    webbrowser.open(share_url)
+    # 生成 URL
+    params = {
+        MPE_IMPORT_PARAM: start_dir,
+        MPE_IMPORT_FILE_PARAM: file_name,
+    }
+    query_str = urlencode(params)
+    open_url = f"{MPE_BASE_URL}?{query_str}"
+
+    webbrowser.open(open_url)
