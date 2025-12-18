@@ -134,6 +134,8 @@ mcp = FastMCP(
     生成 Pipeline 后，应通过 run_pipeline() 验证其正确性，并根据结果进行迭代优化：
 
     1. **运行验证**
+       - ⚠️ 重要：在调用 run_pipeline 之前，必须确保当前设备/窗口处于 Pipeline 入口节点所假设的“起始界面”（与生成/录制该 Pipeline 时一致）。
+         如果界面已被前序操作改变，先通过返回/导航等方式恢复到起始界面；若无法自动恢复或无法确定当前状态，请提示用户手动恢复到起始界面后再继续 run_pipeline。
        - 调用 run_pipeline(controller_id, pipeline_path) 执行 Pipeline
        - 检查返回的 TaskDetail：
          - status 为 succeeded 表示成功

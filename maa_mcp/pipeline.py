@@ -398,6 +398,8 @@ def save_pipeline(
 
     说明：
     此函数会先加载 Pipeline 文件到 Resource，然后通过 Tasker 执行任务。
+    ⚠️ 重要：run_pipeline 不会自动把界面恢复到入口节点所假设的起始状态。
+    运行前请先将设备/窗口切回到 Pipeline 入口对应的起始界面；若无法自动恢复或无法确定当前界面，请提示用户手动恢复后再运行。
 """,
 )
 def run_pipeline(
