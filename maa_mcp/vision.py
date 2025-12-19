@@ -15,7 +15,7 @@ from maa_mcp.paths import get_screenshots_dir
 
 
 @mcp.tool(
-    name="ocr",
+    name="screencap_and_ocr",
     description="""
     对当前设备屏幕进行截图，并执行光学字符识别（OCR）处理。
 
@@ -28,12 +28,11 @@ from maa_mcp.paths import get_screenshots_dir
     - 失败：返回 None（截图失败或 OCR 识别失败）
 
     说明：
-    识别结果可用于后续的坐标定位和自动化决策，通常包含文本内容、边界框坐标、置信度评分等信息。
-    首次使用时，如果 OCR 模型文件不存在，会返回提示信息，此时需要调用 check_and_download_ocr() 下载资源后再重试。
-    下载完成后即可正常使用，后续调用无需再次下载。
+    识别结果可用于后续的坐标定位和自动化决策，通常包含文本内容、坐标等信息。
+    需根据坐标信息理解屏幕上文字的位置和布局，以便进行进一步的交互操作。
 """,
 )
-def ocr(controller_id: str) -> Optional[Union[list, str]]:
+def screencap_and_ocr(controller_id: str) -> Optional[Union[list, str]]:
     # 先检查 OCR 资源是否存在，不存在则返回提示信息让 AI 主动调用下载
     if not check_ocr_files_exist():
         return "OCR 模型文件不存在，请先调用 check_and_download_ocr() 下载 OCR 资源后重试"
@@ -53,7 +52,7 @@ def ocr(controller_id: str) -> Optional[Union[list, str]]:
 
 
 @mcp.tool(
-    name="screencap",
+    name="screencap_only",
     description="""
     对当前设备屏幕进行截图。
     参数：
@@ -63,7 +62,7 @@ def ocr(controller_id: str) -> Optional[Union[list, str]]:
     - 失败：返回 None
     """,
 )
-def screencap(controller_id: str) -> Optional[str]:
+def screencap_only(controller_id: str) -> Optional[str]:
     controller = object_registry.get(controller_id)
     if not controller:
         return None

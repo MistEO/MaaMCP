@@ -47,8 +47,8 @@ Talk is cheap, 请看: **[🎞️ Bilibili 视频演示](https://www.bilibili.co
 
 ### 👀 屏幕识别
 
-- `ocr` - 光学字符识别（高效，推荐优先使用）
-- `screencap` - 屏幕截图（按需使用，token 开销大）
+- `screencap_and_ocr` - 光学字符识别（高效，推荐优先使用）
+- `screencap_only` - 屏幕截图，然后由大模型视觉处理（按需使用，token 开销大）
 
 ### 🎮 设备控制
 

@@ -47,8 +47,8 @@ Talk is cheap, see: **[🎞️ Bilibili Video Demo](https://www.bilibili.com/vid
 
 ### 👀 Screen Recognition
 
-- `ocr` - Optical Character Recognition (efficient, recommended for priority use, OCR model auto-downloads on first use)
-- `screencap` - Screenshot capture (use as needed, high token cost)
+- `screencap_and_ocr` - Optical Character Recognition (efficient, recommended for priority use, OCR model auto-downloads on first use)
+- `screencap_only` - Screenshot capture, then processed by large model vision (use as needed, high token cost)
 
 ### 🎮 Device Control
 
