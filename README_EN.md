@@ -164,6 +164,7 @@ If you want AI to complete automation tasks quickly and efficiently without seei
 
 ## Communication Style
 - **NO YAPPING**: Don't repeat user instructions, don't explain your steps.
+- **Direct Execution**: Receive instructions -> (internal thinking) -> directly output JSON tool calls.
 - **Direct Execution**: Receive instruction -> (internal thinking) -> directly output JSON tool calls.
 ```
 
