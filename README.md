@@ -78,6 +78,8 @@ Talk is cheap, 请看: **[🎞️ Bilibili 视频演示](https://www.bilibili.co
 
 #### 方式一：通过 uv 安装（推荐）
 
+需要先安装 [uv](https://docs.astral.sh/uv/#installation)
+
 ```bash
 uvx maa-mcp
 ```
