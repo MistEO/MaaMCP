@@ -76,13 +76,21 @@ Talk is cheap, 请看: **[🎞️ Bilibili 视频演示](https://www.bilibili.co
 
 ### 安装方式
 
-#### 方式一：通过 pip 安装（推荐）
+#### 方式一：通过 uv 安装（推荐）
+
+需要先安装 [uv](https://docs.astral.sh/uv/#installation)
+
+```bash
+uvx maa-mcp
+```
+
+#### 方式二：通过 pip 安装
 
 ```bash
 pip install maa-mcp
 ```
 
-#### 方式二：从源码安装
+#### 方式三：从源码安装
 
 1. **克隆仓库**
 
@@ -116,7 +124,7 @@ pip install maa-mcp
 在 Cherry Studio 等软件中，添加 MCP 命令：
 
 ```shell
-maa-mcp
+uvx maa-mcp
 ```
 
 ## 使用示例
