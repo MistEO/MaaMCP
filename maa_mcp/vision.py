@@ -13,6 +13,8 @@ from maa_mcp.resource import get_or_create_tasker
 from maa_mcp.download import check_ocr_files_exist
 from maa_mcp.paths import get_screenshots_dir
 
+from fastmcp.utilities.types import Image
+
 
 @mcp.tool(
     name="screencap_and_ocr",
@@ -35,7 +37,9 @@ from maa_mcp.paths import get_screenshots_dir
 def screencap_and_ocr(controller_id: str) -> Optional[Union[list, str]]:
     # 先检查 OCR 资源是否存在，不存在则返回提示信息让 AI 主动调用下载
     if not check_ocr_files_exist():
-        return "OCR 模型文件不存在，请先调用 check_and_download_ocr() 下载 OCR 资源后重试"
+        return (
+            "OCR 模型文件不存在，请先调用 check_and_download_ocr() 下载 OCR 资源后重试"
+        )
 
     controller: Controller | None = object_registry.get(controller_id)
     tasker = get_or_create_tasker(controller_id)
@@ -58,11 +62,11 @@ def screencap_and_ocr(controller_id: str) -> Optional[Union[list, str]]:
     参数：
     - controller_id: 控制器 ID，由 connect_adb_device() 或 connect_window() 返回
     返回值：
-    - 成功：返回截图文件的绝对路径，可通过 read_file 工具读取图片内容
+    - 成功：返回截图
     - 失败：返回 None
     """,
 )
-def screencap_only(controller_id: str) -> Optional[str]:
+def screencap_only(controller_id: str) -> Optional[Image]:
     controller = object_registry.get(controller_id)
     if not controller:
         return None
@@ -79,4 +83,4 @@ def screencap_only(controller_id: str) -> Optional[str]:
         return None
     # 记录当前会话保存的截图文件路径，用于退出时清理
     _saved_screenshots.append(filepath)
-    return str(filepath.absolute())
+    return Image(filepath.absolute())
